@@ -1,0 +1,9 @@
+node_modules/
+dist/
+build/
+.env
+*.log
+blockchain/artifacts/
+blockchain/cache/
+blockchain/deployments/*.json
+!blockchain/deployments/.gitkeep

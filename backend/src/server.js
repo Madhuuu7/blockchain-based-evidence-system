@@ -1,0 +1,59 @@
+import express from "express";
+import mongoose from "mongoose";
+import cors from "cors";
+import helmet from "helmet";
+import morgan from "morgan";
+import rateLimit from "express-rate-limit";
+import { env } from "./config/env.js";
+import { startEventListener } from "./services/eventListener.js";
+import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
+
+import authRoutes from "./routes/authRoutes.js";
+import evidenceRoutes from "./routes/evidenceRoutes.js";
+import caseRoutes from "./routes/caseRoutes.js";
+import alertRoutes from "./routes/alertRoutes.js";
+import userRoutes from "./routes/userRoutes.js";
+
+const app = express();
+
+app.use(helmet());
+app.use(cors({ origin: env.frontendOrigin, credentials: true }));
+app.use(express.json());
+app.use(morgan("dev"));
+
+// Basic protection against brute-force / abusive API access
+const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
+app.use("/api", apiLimiter);
+
+app.get("/api/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
+
+app.use("/api/auth", authRoutes);
+app.use("/api/evidence", evidenceRoutes);
+app.use("/api/cases", caseRoutes);
+app.use("/api/alerts", alertRoutes);
+app.use("/api/users", userRoutes);
+
+app.use(notFoundHandler);
+app.use(errorHandler);
+
+async function start() {
+  try {
+    await mongoose.connect(env.mongodbUri);
+    console.log("[server] Connected to MongoDB");
+  } catch (err) {
+    console.error("[server] MongoDB connection failed:", err.message);
+    console.error("[server] Continuing to start HTTP server, but data endpoints will fail until MongoDB is reachable.");
+  }
+
+  try {
+    startEventListener();
+  } catch (err) {
+    console.error("[server] Event listener failed to start:", err.message);
+  }
+
+  app.listen(env.port, () => {
+    console.log(`[server] Listening on port ${env.port}`);
+  });
+}
+
+start();

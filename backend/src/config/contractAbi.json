@@ -1,0 +1,96 @@
+[
+  { "type": "constructor", "inputs": [], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "deployer", "inputs": [], "outputs": [{ "type": "address" }], "stateMutability": "view" },
+  { "type": "function", "name": "getRole", "inputs": [{ "name": "account", "type": "address" }], "outputs": [{ "type": "uint8" }], "stateMutability": "view" },
+  { "type": "function", "name": "assignRole", "inputs": [{ "name": "account", "type": "address" }, { "name": "role", "type": "uint8" }], "outputs": [], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "removeRole", "inputs": [{ "name": "account", "type": "address" }], "outputs": [], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "registerEvidence", "inputs": [
+      { "name": "caseId", "type": "string" },
+      { "name": "cid", "type": "string" },
+      { "name": "description", "type": "string" },
+      { "name": "fileType", "type": "string" }
+    ], "outputs": [{ "type": "uint256" }], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "getEvidence", "inputs": [{ "name": "evidenceId", "type": "uint256" }], "outputs": [{
+      "type": "tuple", "components": [
+        { "name": "evidenceId", "type": "uint256" },
+        { "name": "caseId", "type": "string" },
+        { "name": "cid", "type": "string" },
+        { "name": "description", "type": "string" },
+        { "name": "fileType", "type": "string" },
+        { "name": "registeredBy", "type": "address" },
+        { "name": "timestamp", "type": "uint256" },
+        { "name": "exists", "type": "bool" },
+        { "name": "status", "type": "uint8" }
+      ]
+    }], "stateMutability": "view" },
+  { "type": "function", "name": "attemptAccess", "inputs": [{ "name": "evidenceId", "type": "uint256" }], "outputs": [
+      { "name": "authorized", "type": "bool" },
+      { "type": "tuple", "components": [
+        { "name": "evidenceId", "type": "uint256" },
+        { "name": "caseId", "type": "string" },
+        { "name": "cid", "type": "string" },
+        { "name": "description", "type": "string" },
+        { "name": "fileType", "type": "string" },
+        { "name": "registeredBy", "type": "address" },
+        { "name": "timestamp", "type": "uint256" },
+        { "name": "exists", "type": "bool" },
+        { "name": "status", "type": "uint8" }
+      ] }
+    ], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "recordAccess", "inputs": [{ "name": "evidenceId", "type": "uint256" }], "outputs": [], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "transferCustody", "inputs": [{ "name": "evidenceId", "type": "uint256" }, { "name": "to", "type": "address" }], "outputs": [], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "recordVerification", "inputs": [{ "name": "evidenceId", "type": "uint256" }, { "name": "integrityVerified", "type": "bool" }], "outputs": [], "stateMutability": "nonpayable" },
+  { "type": "function", "name": "getCustodyHistory", "inputs": [{ "name": "evidenceId", "type": "uint256" }], "outputs": [{
+      "type": "tuple[]", "components": [
+        { "name": "action", "type": "uint8" },
+        { "name": "actor", "type": "address" },
+        { "name": "timestamp", "type": "uint256" },
+        { "name": "note", "type": "string" }
+      ]
+    }], "stateMutability": "view" },
+  { "type": "function", "name": "totalEvidence", "inputs": [], "outputs": [{ "type": "uint256" }], "stateMutability": "view" },
+
+  { "type": "event", "name": "RoleAssigned", "inputs": [
+      { "name": "account", "type": "address", "indexed": true },
+      { "name": "role", "type": "uint8", "indexed": false },
+      { "name": "assignedBy", "type": "address", "indexed": true },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ] },
+  { "type": "event", "name": "RoleRemoved", "inputs": [
+      { "name": "account", "type": "address", "indexed": true },
+      { "name": "previousRole", "type": "uint8", "indexed": false },
+      { "name": "removedBy", "type": "address", "indexed": true },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ] },
+  { "type": "event", "name": "EvidenceRegistered", "inputs": [
+      { "name": "evidenceId", "type": "uint256", "indexed": true },
+      { "name": "caseId", "type": "string", "indexed": false },
+      { "name": "cid", "type": "string", "indexed": false },
+      { "name": "registeredBy", "type": "address", "indexed": true },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ] },
+  { "type": "event", "name": "ChainOfCustodyEvent", "inputs": [
+      { "name": "evidenceId", "type": "uint256", "indexed": true },
+      { "name": "action", "type": "uint8", "indexed": false },
+      { "name": "actor", "type": "address", "indexed": true },
+      { "name": "timestamp", "type": "uint256", "indexed": false },
+      { "name": "note", "type": "string", "indexed": false }
+    ] },
+  { "type": "event", "name": "AccessEvent", "inputs": [
+      { "name": "evidenceId", "type": "uint256", "indexed": true },
+      { "name": "accessor", "type": "address", "indexed": true },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ] },
+  { "type": "event", "name": "TransferEvent", "inputs": [
+      { "name": "evidenceId", "type": "uint256", "indexed": true },
+      { "name": "from", "type": "address", "indexed": true },
+      { "name": "to", "type": "address", "indexed": true },
+      { "name": "timestamp", "type": "uint256", "indexed": false }
+    ] },
+  { "type": "event", "name": "AccessDenied", "inputs": [
+      { "name": "wallet", "type": "address", "indexed": true },
+      { "name": "evidenceId", "type": "uint256", "indexed": true },
+      { "name": "timestamp", "type": "uint256", "indexed": false },
+      { "name": "reason", "type": "string", "indexed": false }
+    ] }
+]
