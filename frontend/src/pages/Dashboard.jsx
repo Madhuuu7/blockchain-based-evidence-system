@@ -5,9 +5,9 @@ import api from "../services/api.js";
 
 function StatCard({ label, value }) {
   return (
-    <div className="bg-navy-900 border border-navy-700 rounded-xl p-5">
+    <div className="bg-white border border-ocean-200 rounded-xl p-5">
       <div className="text-xs text-slate-500 uppercase tracking-wide">{label}</div>
-      <div className="text-2xl font-semibold text-slate-100 mt-2">{value}</div>
+      <div className="text-2xl font-semibold text-ocean-900 mt-2">{value}</div>
     </div>
   );
 }
@@ -43,7 +43,7 @@ export default function Dashboard() {
 
   return (
     <Layout>
-      <h1 className="text-lg font-semibold text-slate-100 mb-6">
+      <h1 className="text-lg font-semibold text-ocean-900 mb-6">
         {role} Dashboard
       </h1>
 
@@ -54,7 +54,7 @@ export default function Dashboard() {
         {role === "ADMIN" && <StatCard label="Open Alerts" value={stats.alerts} />}
       </div>
 
-      <div className="mt-8 bg-navy-900 border border-navy-700 rounded-xl p-6 text-sm text-slate-400">
+      <div className="mt-8 bg-white border border-ocean-200 rounded-xl p-6 text-sm text-slate-600">
         {role === "OFFICER" && "Use \"Upload Evidence\" to submit a new item to IPFS and register it on-chain."}
         {role === "INVESTIGATOR" && "Open an evidence record to verify its integrity and review its chain of custody."}
         {role === "JUDICIARY" && "Review authorized evidence and its full chain-of-custody timeline."}

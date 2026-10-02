@@ -7,14 +7,23 @@ const AuthContext = createContext(null);
 
 export function AuthProvider({ children }) {
   const { address, connect, signer } = useWeb3();
-  const [role, setRole] = useState(null);
+
+  // Read synchronously during the first render, not in an effect.
+  //
+  // An effect runs after that first render, so ProtectedRoute saw role === null
+  // and redirected to /login before the cached role ever arrived - meaning a
+  // signed-in user was thrown back to the login screen by nothing more than a
+  // page refresh.
+  const [role, setRole] = useState(() => {
+    try {
+      return localStorage.getItem("evidence_system_role");
+    } catch {
+      return null;
+    }
+  });
+
   const [authError, setAuthError] = useState(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
-
-  useEffect(() => {
-    const cachedRole = localStorage.getItem("evidence_system_role");
-    if (cachedRole) setRole(cachedRole);
-  }, []);
 
   const signIn = useCallback(async () => {
   setAuthError(null);

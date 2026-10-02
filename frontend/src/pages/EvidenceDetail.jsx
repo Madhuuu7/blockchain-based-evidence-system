@@ -66,6 +66,8 @@ export default function EvidenceDetail() {
   const [transferTx, setTransferTx] =
     useState(null);
 
+  const [downloading, setDownloading] = useState(false);
+
 
   // ------------------------------------------------------------
   // Load evidence + custody history
@@ -105,6 +107,36 @@ export default function EvidenceDetail() {
 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);
+
+
+  // ------------------------------------------------------------
+  // Download / View File from IPFS
+  // ------------------------------------------------------------
+
+  const handleDownloadFile = async () => {
+    try {
+      setDownloading(true);
+      setError(null);
+      const res = await api.get(`/evidence/${id}/file`, { responseType: "blob" });
+      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      const extension = evidence?.fileType?.includes("/") ? evidence.fileType.split("/")[1] : "bin";
+      link.setAttribute("download", `evidence-${id}-${evidence?.caseId || "file"}.${extension}`);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(blobUrl);
+    } catch (err) {
+      console.error("Failed to download file:", err);
+      setError(
+        err.response?.data?.error ||
+        "Failed to download evidence file. You may not be authorized."
+      );
+    } finally {
+      setDownloading(false);
+    }
+  };
 
 
   // ------------------------------------------------------------
@@ -314,7 +346,7 @@ export default function EvidenceDetail() {
   if (roleLoading) {
     return (
       <Layout>
-        <div className="text-sm text-slate-400">
+        <div className="text-sm text-slate-600">
           Checking wallet permissions...
         </div>
       </Layout>
@@ -325,7 +357,7 @@ export default function EvidenceDetail() {
   return (
     <Layout>
 
-      <h1 className="text-lg font-semibold text-slate-100 mb-6">
+      <h1 className="text-lg font-semibold text-ocean-900 mb-6">
         Evidence #{id}
       </h1>
 
@@ -349,7 +381,7 @@ export default function EvidenceDetail() {
               LEFT COLUMN
           =================================================== */}
 
-          <div className="bg-navy-900 border border-navy-700 rounded-xl p-6 space-y-3 text-sm">
+          <div className="bg-white border border-ocean-200 rounded-xl p-6 space-y-3 text-sm">
 
 
             {/* ------------------------------------------------
@@ -437,9 +469,18 @@ export default function EvidenceDetail() {
             </div>
 
 
-            <p className="text-slate-400 pt-2 border-t border-navy-700">
+            <p className="text-slate-600 pt-2 border-t border-ocean-200">
               {evidence.description}
             </p>
+
+            <button
+              onClick={handleDownloadFile}
+              disabled={downloading}
+              className="mt-2 w-full py-2 rounded bg-white hover:bg-ocean-100 border border-ocean-300 text-ocean-900 text-xs font-medium disabled:opacity-50 flex items-center justify-center gap-2"
+            >
+              <span>📥</span>
+              <span>{downloading ? "Retrieving from IPFS..." : "Download / View Evidence File"}</span>
+            </button>
 
 
             {/* =================================================
@@ -456,7 +497,7 @@ export default function EvidenceDetail() {
                     verifyState ===
                     "verifying"
                   }
-                  className="mt-4 w-full py-2 rounded bg-accent-600 hover:bg-accent-500 disabled:opacity-60 text-sm"
+                  className="mt-4 w-full py-2 rounded bg-accent-600 hover:bg-accent-700 disabled:opacity-60 text-sm text-white"
                 >
 
                   {verifyState ===
@@ -495,7 +536,7 @@ export default function EvidenceDetail() {
                         </div>
 
 
-                        <div className="text-xs text-slate-400 mt-1 break-all">
+                        <div className="text-xs text-slate-600 mt-1 break-all">
                           Transaction:{" "}
                           {
                             verifyResult.blockchainTxHash
@@ -509,7 +550,7 @@ export default function EvidenceDetail() {
                     {!verifyResult.blockchainRecorded &&
                       verifyResult.note && (
 
-                        <div className="text-xs text-slate-400 mt-1">
+                        <div className="text-xs text-slate-600 mt-1">
                           {verifyResult.note}
                         </div>
 
@@ -534,9 +575,9 @@ export default function EvidenceDetail() {
 
             {canTransferCustody && (
 
-              <div className="mt-6 pt-6 border-t border-navy-700">
+              <div className="mt-6 pt-6 border-t border-ocean-200">
 
-                <h2 className="text-sm font-semibold text-slate-300 mb-2">
+                <h2 className="text-sm font-semibold text-ocean-700 mb-2">
                   Transfer Custody
                 </h2>
 
@@ -556,7 +597,7 @@ export default function EvidenceDetail() {
                     )
                   }
                   placeholder="Recipient wallet address"
-                  className="w-full bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm"
+                  className="w-full bg-white border border-ocean-200 rounded px-3 py-2 text-sm"
                 />
 
 
@@ -570,7 +611,7 @@ export default function EvidenceDetail() {
                     transferState ===
                       "waiting"
                   }
-                  className="mt-3 w-full py-2 rounded bg-accent-600 hover:bg-accent-500 disabled:opacity-60 text-sm"
+                  className="mt-3 w-full py-2 rounded bg-accent-600 hover:bg-accent-700 disabled:opacity-60 text-sm text-white"
                 >
 
                   {transferState ===
@@ -614,7 +655,7 @@ export default function EvidenceDetail() {
                       on blockchain
                     </div>
 
-                    <div className="mt-1 break-all text-slate-400">
+                    <div className="mt-1 break-all text-slate-600">
                       Transaction:{" "}
                       {transferTx}
                     </div>
@@ -636,11 +677,11 @@ export default function EvidenceDetail() {
 
             {role === "JUDICIARY" && (
 
-              <div className="mt-6 pt-6 border-t border-navy-700">
+              <div className="mt-6 pt-6 border-t border-ocean-200">
 
-                <div className="rounded-lg border border-navy-700 bg-navy-800/50 p-3">
+                <div className="rounded-lg border border-ocean-200 bg-white/50 p-3">
 
-                  <div className="text-sm font-medium text-slate-300">
+                  <div className="text-sm font-medium text-ocean-700">
                     Judiciary Access
                   </div>
 
@@ -664,14 +705,14 @@ export default function EvidenceDetail() {
               RIGHT COLUMN — CHAIN OF CUSTODY
           =================================================== */}
 
-          <div className="bg-navy-900 border border-navy-700 rounded-xl p-6">
+          <div className="bg-white border border-ocean-200 rounded-xl p-6">
 
-            <h2 className="text-sm font-semibold text-slate-300 mb-4">
+            <h2 className="text-sm font-semibold text-ocean-700 mb-4">
               Chain of Custody
             </h2>
 
 
-            <ol className="relative border-l border-navy-700 ml-2 space-y-6">
+            <ol className="relative border-l border-ocean-200 ml-2 space-y-6">
 
               {history.map(
                 (event, idx) => (
@@ -681,10 +722,10 @@ export default function EvidenceDetail() {
                     className="ml-4"
                   >
 
-                    <div className="absolute -left-[9px] w-4 h-4 rounded-full bg-accent-600" />
+                    <div className="absolute -left-[9px] w-4 h-4 rounded-full bg-accent-600 text-white" />
 
 
-                    <div className="text-sm text-slate-200">
+                    <div className="text-sm text-ocean-900">
 
                       {CUSTODY_ICON[
                         event.action
@@ -709,7 +750,7 @@ export default function EvidenceDetail() {
 
                     {event.note && (
 
-                      <div className="text-xs text-slate-400 mt-1">
+                      <div className="text-xs text-slate-600 mt-1">
                         {event.note}
                       </div>
 

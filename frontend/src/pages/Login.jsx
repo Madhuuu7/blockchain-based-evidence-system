@@ -18,10 +18,10 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-navy-950">
-      <div className="w-full max-w-md bg-navy-900 border border-navy-700 rounded-xl p-8">
-        <h1 className="text-xl font-semibold text-slate-100">Cyber Crime Evidence System</h1>
-        <p className="text-sm text-slate-400 mt-2">
+    <div className="min-h-screen flex items-center justify-center bg-ocean-50">
+      <div className="w-full max-w-md bg-white border border-ocean-200 rounded-xl p-8">
+        <h1 className="text-xl font-semibold text-ocean-900">Cyber Crime Evidence System</h1>
+        <p className="text-sm text-slate-600 mt-2">
           Sign in with your wallet. Your role (Admin, Officer, Investigator, Judiciary) is
           verified directly against the smart contract — it is never taken from local storage
           or the frontend.
@@ -30,7 +30,7 @@ export default function Login() {
         <button
           onClick={handleSignIn}
           disabled={isAuthenticating}
-          className="mt-6 w-full py-3 rounded-lg bg-accent-600 hover:bg-accent-500 disabled:opacity-60 font-medium"
+          className="mt-6 w-full py-3 rounded-lg bg-accent-600 hover:bg-accent-700 disabled:opacity-60 font-medium text-white"
         >
           {isAuthenticating ? "Waiting for signature..." : "Connect Wallet & Sign In"}
         </button>

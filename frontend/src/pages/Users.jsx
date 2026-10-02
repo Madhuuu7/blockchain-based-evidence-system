@@ -263,13 +263,13 @@ export default function Users() {
 
   return (
     <Layout>
-      <h1 className="text-lg font-semibold text-slate-100 mb-6">
+      <h1 className="text-lg font-semibold text-ocean-900 mb-6">
         User & Role Management
       </h1>
 
       <form
         onSubmit={handleAssign}
-        className="mb-8 bg-navy-900 border border-navy-700 rounded-xl p-6 flex flex-wrap gap-3 items-end max-w-2xl"
+        className="mb-8 bg-white border border-ocean-200 rounded-xl p-6 flex flex-wrap gap-3 items-end max-w-2xl"
       >
         <div className="flex-1 min-w-[240px]">
           <label className="text-xs text-slate-500">
@@ -284,7 +284,7 @@ export default function Users() {
                 address: e.target.value,
               }))
             }
-            className="mt-1 w-full bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm"
+            className="mt-1 w-full bg-white border border-ocean-200 rounded px-3 py-2 text-sm"
             placeholder="0x..."
             autoComplete="off"
           />
@@ -303,7 +303,7 @@ export default function Users() {
                 role: e.target.value,
               }))
             }
-            className="mt-1 bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm"
+            className="mt-1 bg-white border border-ocean-200 rounded px-3 py-2 text-sm"
           >
             {Object.keys(ROLE_ENUM)
               .filter((r) => r !== "NONE")
@@ -318,7 +318,7 @@ export default function Users() {
         <button
           type="submit"
           disabled={status === "pending"}
-          className="bg-accent-600 hover:bg-accent-500 disabled:opacity-50 disabled:cursor-not-allowed rounded px-4 py-2 text-sm"
+          className="bg-accent-600 hover:bg-accent-700 disabled:opacity-50 disabled:cursor-not-allowed rounded px-4 py-2 text-sm text-white"
         >
           {status === "pending"
             ? "Confirm in MetaMask..."
@@ -339,9 +339,9 @@ export default function Users() {
         </div>
       )}
 
-      <div className="bg-navy-900 border border-navy-700 rounded-xl overflow-hidden">
+      <div className="bg-white border border-ocean-200 rounded-xl overflow-hidden">
         <table className="w-full text-sm">
-          <thead className="bg-navy-800 text-slate-400 text-left">
+          <thead className="bg-white text-slate-600 text-left">
             <tr>
               <th className="px-4 py-3">
                 Wallet
@@ -361,7 +361,7 @@ export default function Users() {
             {users.map((u) => (
               <tr
                 key={u._id}
-                className="border-t border-navy-700"
+                className="border-t border-ocean-200"
               >
                 <td className="px-4 py-3 break-all">
                   {u.walletAddress}

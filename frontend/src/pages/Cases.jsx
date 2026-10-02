@@ -33,24 +33,24 @@ export default function Cases() {
 
   return (
     <Layout>
-      <h1 className="text-lg font-semibold text-slate-100 mb-6">Cases</h1>
+      <h1 className="text-lg font-semibold text-ocean-900 mb-6">Cases</h1>
 
-      {(role === "OFFICER" || role === "ADMIN") && (
-        <form onSubmit={handleCreate} className="mb-8 bg-navy-900 border border-navy-700 rounded-xl p-6 grid gap-3 max-w-xl">
-          <input placeholder="Case ID" value={form.caseId} onChange={(e) => setForm((f) => ({ ...f, caseId: e.target.value }))} className="bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm" />
-          <input placeholder="Title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm" />
-          <textarea placeholder="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm" rows={3} />
-          <button className="bg-accent-600 hover:bg-accent-500 rounded px-4 py-2 text-sm">Create Case</button>
+      {(role === "OFFICER" || role === "ADMIN" || role === "INVESTIGATOR") && (
+        <form onSubmit={handleCreate} className="mb-8 bg-white border border-ocean-200 rounded-xl p-6 grid gap-3 max-w-xl">
+          <input placeholder="Case ID" value={form.caseId} onChange={(e) => setForm((f) => ({ ...f, caseId: e.target.value }))} className="bg-white border border-ocean-200 rounded px-3 py-2 text-sm" />
+          <input placeholder="Title" value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} className="bg-white border border-ocean-200 rounded px-3 py-2 text-sm" />
+          <textarea placeholder="Description" value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} className="bg-white border border-ocean-200 rounded px-3 py-2 text-sm" rows={3} />
+          <button className="bg-accent-600 hover:bg-accent-700 rounded px-4 py-2 text-sm text-white">Create Case</button>
           {error && <div className="text-sm text-status-danger">{error}</div>}
         </form>
       )}
 
       <div className="grid md:grid-cols-2 gap-4">
         {cases.map((c) => (
-          <Link key={c._id} to={`/cases/${c.caseId}`} className="bg-navy-900 border border-navy-700 rounded-xl p-5 hover:border-accent-600 transition">
-            <div className="text-sm font-medium text-slate-200">{c.title}</div>
+          <Link key={c._id} to={`/cases/${c.caseId}`} className="bg-white border border-ocean-200 rounded-xl p-5 hover:border-accent-700 transition">
+            <div className="text-sm font-medium text-ocean-900">{c.title}</div>
             <div className="text-xs text-slate-500 mt-1">{c.caseId} · {c.status}</div>
-            <p className="text-xs text-slate-400 mt-2 line-clamp-2">{c.description}</p>
+            <p className="text-xs text-slate-600 mt-2 line-clamp-2">{c.description}</p>
           </Link>
         ))}
       </div>

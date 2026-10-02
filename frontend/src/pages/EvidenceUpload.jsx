@@ -1,4 +1,5 @@
 import React, { useState } from "react";
+import { Link } from "react-router-dom";
 import Layout from "../components/Layout.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import { useWeb3 } from "../context/Web3Context.jsx";
@@ -108,65 +109,57 @@ setResult({
   registeredBy: address,
   timestamp: new Date().toISOString()
 });
-
-      setStage("success");
-      setResult({
-        cid: uploadResult.cid,
-        txHash: receipt.hash,
-        blockNumber: receipt.blockNumber,
-        registeredBy: address,
-        timestamp: new Date().toISOString()
-      });
     } catch (err) {
       setStage("error");
-      setError(err.reason || err.message || "Registration failed");
+      const errMsg = err.response?.data?.error || err.reason || err.message || "Registration failed";
+      setError(errMsg);
     }
   };
 
   return (
     <Layout>
-      <h1 className="text-lg font-semibold text-slate-100 mb-6">Upload Evidence</h1>
+      <h1 className="text-lg font-semibold text-ocean-900 mb-6">Upload Evidence</h1>
 
-      <form onSubmit={handleSubmit} className="max-w-xl bg-navy-900 border border-navy-700 rounded-xl p-6 space-y-4">
+      <form onSubmit={handleSubmit} className="max-w-xl bg-white border border-ocean-200 rounded-xl p-6 space-y-4">
         <div>
-          <label className="text-sm text-slate-400">Case ID</label>
+          <label className="text-sm text-slate-600">Case ID</label>
           <input
             value={caseId}
             onChange={(e) => setCaseId(e.target.value)}
-            className="mt-1 w-full bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm"
+            className="mt-1 w-full bg-white border border-ocean-200 rounded px-3 py-2 text-sm"
             placeholder="CASE-2026-014"
           />
         </div>
 
         <div>
-          <label className="text-sm text-slate-400">Evidence Type</label>
+          <label className="text-sm text-slate-600">Evidence Type</label>
           <input
             value={fileType}
             onChange={(e) => setFileType(e.target.value)}
-            className="mt-1 w-full bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm"
+            className="mt-1 w-full bg-white border border-ocean-200 rounded px-3 py-2 text-sm"
             placeholder="disk-image, screenshot, log-file..."
           />
         </div>
 
         <div>
-          <label className="text-sm text-slate-400">Description</label>
+          <label className="text-sm text-slate-600">Description</label>
           <textarea
             value={description}
             onChange={(e) => setDescription(e.target.value)}
-            className="mt-1 w-full bg-navy-800 border border-navy-700 rounded px-3 py-2 text-sm"
+            className="mt-1 w-full bg-white border border-ocean-200 rounded px-3 py-2 text-sm"
             rows={3}
           />
         </div>
 
         <div>
-          <label className="text-sm text-slate-400">Evidence File</label>
+          <label className="text-sm text-slate-600">Evidence File</label>
           <input type="file" onChange={handleFileChange} className="mt-1 w-full text-sm" />
         </div>
 
         <button
           type="submit"
           disabled={["uploading-ipfs", "awaiting-signature", "confirming"].includes(stage)}
-          className="w-full py-3 rounded-lg bg-accent-600 hover:bg-accent-500 disabled:opacity-60 font-medium text-sm"
+          className="w-full py-3 rounded-lg bg-accent-600 hover:bg-accent-700 disabled:opacity-60 font-medium text-sm text-white"
         >
           {stage === "idle" && "Upload & Register Evidence"}
           {stage === "uploading-ipfs" && "Uploading to IPFS..."}
@@ -193,9 +186,23 @@ setResult({
         )}
 
         {result && (
-          <div className="text-sm bg-status-ok/10 border border-status-ok/30 rounded p-3 space-y-1">
-            <div><span className="text-slate-500">CID:</span> <span className="break-all">{result.cid}</span></div>
-            <div><span className="text-slate-500">Tx Hash:</span> <span className="break-all">{result.txHash}</span></div>
+          <div className="text-sm bg-status-ok/10 border border-status-ok/30 rounded p-3 space-y-1.5">
+            <div className="flex justify-between items-center">
+              <span className="text-slate-600 font-medium">Registration Successful ✓</span>
+              {result.evidenceId && (
+                <Link
+                  to={`/evidence/${result.evidenceId}`}
+                  className="text-xs text-accent-700 hover:underline font-semibold"
+                >
+                  View Detail →
+                </Link>
+              )}
+            </div>
+            {result.evidenceId && (
+              <div><span className="text-slate-500">Evidence ID:</span> <span className="font-mono text-accent-700 font-semibold">#{result.evidenceId}</span></div>
+            )}
+            <div><span className="text-slate-500">CID:</span> <span className="break-all font-mono text-xs">{result.cid}</span></div>
+            <div><span className="text-slate-500">Tx Hash:</span> <span className="break-all font-mono text-xs">{result.txHash}</span></div>
             <div><span className="text-slate-500">Block:</span> {result.blockNumber}</div>
           </div>
         )}
