@@ -4,7 +4,11 @@ import { contractAbi } from "./blockchainService.js";
 import Alert from "../models/Alert.js";
 import Evidence from "../models/Evidence.js";
 
-const POLL_INTERVAL_MS = 2000;
+// 2s is right against a local Hardhat node, where blocks are instant and the
+// RPC is free. Against a shared public endpoint it is roughly 43,000 requests a
+// day and invites rate limiting, while Sepolia only produces a block every 12s
+// anyway - so anything faster than that is polling for nothing.
+const POLL_INTERVAL_MS = Number(process.env.EVENT_POLL_INTERVAL_MS) || 2000;
 
 /**
  * Subscribes to on-chain events and mirrors the relevant ones into MongoDB.

@@ -1,0 +1,101 @@
+# Render blueprint: API + static frontend.
+#
+# Deploying answers the question the local demo cannot: how does anyone other
+# than the developer use this system. Once the contract is on Sepolia and these
+# two services are up, any investigator with MetaMask can connect, and the
+# administrator grants them a role on-chain - no installation, no shared laptop.
+#
+# To deploy: push this repo to GitHub, then New > Blueprint on Render and point
+# it here. Afterwards set the values marked `sync: false` in the dashboard:
+# they are either secrets or URLs that cannot be known until both services
+# exist.
+#
+# Prerequisites, all free:
+#   1. The contract deployed to Sepolia (blockchain/deployments/sepolia.json)
+#   2. MongoDB Atlas Network Access set to allow 0.0.0.0/0 - a hosted backend
+#      does not have your laptop's IP address
+#   3. A Pinata key with the pinFileToIPFS scope
+
+services:
+  - type: web
+    name: evidence-api
+    runtime: node
+    plan: free
+    # Closest free region to Bengaluru.
+    region: singapore
+    rootDir: backend
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    envVars:
+      - key: NODE_VERSION
+        value: "20"
+
+      # Signing key for the session tokens issued after a wallet signature is
+      # verified. Render generates it; it never appears in the repository.
+      - key: JWT_SECRET
+        generateValue: true
+
+      # Public Sepolia endpoint - no API key, no account, no cost.
+      - key: RPC_URL
+        value: https://ethereum-sepolia-rpc.publicnode.com
+
+      - key: PINATA_GATEWAY
+        value: https://gateway.pinata.cloud/ipfs
+
+      # Sepolia produces a block every 12 seconds, so polling faster than that
+      # only burns requests against a shared public endpoint.
+      - key: EVENT_POLL_INTERVAL_MS
+        value: "15000"
+
+      # Atlas connection string. Carries a password, so it is set in the
+      # dashboard rather than committed here.
+      - key: MONGODB_URI
+        sync: false
+
+      # Pinata JWT with the pinFileToIPFS scope. Without it the API falls back
+      # to a local cache and says so, which is not what the architecture claims.
+      - key: PINATA_JWT
+        sync: false
+
+      # From blockchain/deployments/sepolia.json after deploying.
+      - key: CONTRACT_ADDRESS
+        sync: false
+
+      # The static site's URL, e.g. https://evidence-web.onrender.com
+      - key: FRONTEND_ORIGIN
+        sync: false
+
+  - type: web
+    name: evidence-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: dist
+    envVars:
+      # The API's URL plus /api, e.g. https://evidence-api.onrender.com/api
+      - key: VITE_API_BASE_URL
+        sync: false
+
+      - key: VITE_CONTRACT_ADDRESS
+        sync: false
+
+      # Sepolia. The frontend refuses to transact on a different network.
+      - key: VITE_CHAIN_ID
+        value: "11155111"
+
+      - key: VITE_RPC_URL
+        value: https://ethereum-sepolia-rpc.publicnode.com
+    routes:
+      # A single-page app: every path has to reach index.html, or a refresh on
+      # /evidence/1 returns a 404 from the static host.
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    headers:
+      - path: /*
+        name: X-Content-Type-Options
+        value: nosniff
+      - path: /*
+        name: Referrer-Policy
+        value: strict-origin-when-cross-origin
