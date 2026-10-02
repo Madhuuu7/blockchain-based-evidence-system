@@ -5,7 +5,7 @@ import { createCase, getCase, listCases } from "../controllers/caseController.js
 const router = Router();
 router.use(requireAuth);
 
-router.post("/", requireRole("OFFICER", "ADMIN"), createCase);
+router.post("/", requireRole("OFFICER", "INVESTIGATOR", "ADMIN"), createCase);
 router.get("/", listCases);
 router.get("/:caseId", getCase);
 

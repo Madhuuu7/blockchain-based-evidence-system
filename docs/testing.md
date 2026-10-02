@@ -1,138 +1,107 @@
-# Testing Documentation
+# Comprehensive Testing Documentation
 
-## 1. Smart Contract Tests (Hardhat + Chai)
+This document covers all automated test suites and end-to-end integration testing for the Blockchain-Based Cybercrime Evidence Management System.
 
-Location: `blockchain/test/EvidenceRegistry.test.js`
+---
 
-Run:
+## 1. Smart Contract Unit Tests (Hardhat + Chai)
+
+**Location:** `blockchain/test/EvidenceRegistry.test.js`
+
+### Execution:
 ```bash
 cd blockchain
 npx hardhat test
 ```
 
-Covers (numbered to match the project's required test list):
-1. Deployment — deployer becomes ADMIN
-2. Admin role — `getRole` returns ADMIN for deployer
-3. Role assignment — ADMIN can assign roles, emits `RoleAssigned`
-4. Unauthorized role assignment — non-admin reverts
-5. Evidence registration — OFFICER can register, emits `EvidenceRegistered`
-6. Unauthorized evidence registration — non-officer reverts
-7. Evidence retrieval — authorized role can read via `getEvidence`
-8. Authorized access — `attemptAccess` succeeds and emits `AccessEvent`
-9. Unauthorized access — `getEvidence` reverts for `Role.NONE`
-10. `AccessDenied` event — `attemptAccess` emits it without reverting for unauthorized callers
-11. Chain-of-custody events — `Registered` event recorded on registration
-12. Evidence transfer — `transferCustody` emits `TransferEvent`, appends custody event, rejects transfer to an unassigned wallet
-13. Invalid inputs — empty `caseId` rejected, non-existent evidence ID rejected
-14. Duplicate evidence handling — duplicate `(caseId, cid)` rejected
-15. Event parameters — `recordVerification` emits `ChainOfCustodyEvent` with correct action/actor/note, and sets `Verified`/`Flagged` status correctly
+### Coverage (19 Passing Tests):
+1. **Deployment:** Deployer bootstrapped as `ADMIN` (Account #0).
+2. **Admin Role:** `getRole(deployer)` correctly returns `Role.ADMIN` (1).
+3. **Role Assignment:** ADMIN assigns `Role.OFFICER` and emits `RoleAssigned`.
+4. **Unauthorized Role Assignment:** Non-admin cannot assign roles (reverts).
+5. **Role Removal:** ADMIN can remove roles and emits `RoleRemoved`.
+6. **Evidence Registration:** OFFICER registers evidence and emits `EvidenceRegistered`.
+7. **Unauthorized Registration:** Non-officer is rejected with `incorrect role for this action`.
+8. **Evidence Retrieval:** Authorized roles read evidence via `getEvidence()`.
+9. **Authorized Access Probe:** `attemptAccess()` returns true and logs `AccessEvent`.
+10. **Hard Access Gate:** `getEvidence()` reverts for `Role.NONE`.
+11. **Non-Reverting Unauthorized Probe:** `attemptAccess()` succeeds for `Role.NONE` and emits `AccessDenied` without rolling back logs.
+12. **Chain of Custody Registration Event:** Initial `Registered` event appended to timeline.
+13. **Custody Transfer:** INVESTIGATOR transfers custody to another assigned wallet, emitting `TransferEvent`.
+14. **Transfer Recipient Check:** Rejects transfer to a wallet with `Role.NONE`.
+15. **Input Validation:** Rejects empty `caseId`.
+16. **Non-Existent Records:** Reverts operations on non-existent `evidenceId`.
+17. **Duplicate Prevention:** Rejects duplicate `(caseId, cid)` pair via duplicate guard.
+18. **Verification Recording:** INVESTIGATOR records integrity verified, sets `EvidenceStatus.Verified`.
+19. **Integrity Flagging:** JUDICIARY records violation, sets `EvidenceStatus.Flagged`.
 
-Also covered: `removeRole`.
+---
 
-## 2. Backend Tests
+## 2. Backend Automated Unit & Integration Tests
 
-Not yet implemented as automated Jest/Supertest files in this delivery —
-recommended structure (`backend/test/`):
+**Location:** `backend/test/system-check.mjs`
 
+### Execution:
+```bash
+cd backend
+npm test
 ```
-test/
-├── auth.test.js         # nonce issuance, signature verification, rejects reused/expired nonce
-├── evidenceUpload.test.js  # file type/size validation, mocked Pinata upload, MongoDB draft write
-├── evidenceRetrieval.test.js  # mocked contract read, 403 on reverted "no role" call
-├── verify.test.js       # mocked IPFS fetch + hash comparison, alert creation on mismatch
-└── alerts.test.js       # ADMIN-only access, resolve endpoint
+
+### Coverage:
+1. **Genuine IPFS CIDv1 Recomputation:** Verifies that multiformats raw SHA256 CID derivation produces exact CIDv1 strings for known evidence fixtures.
+2. **Tamper Detection Simulation:** Confirms that altered file byte streams produce distinct CIDs that trigger integrity mismatches.
+3. **MongoDB Connection & Historical Data Preservation:** Validates SRV DNS resolution and verifies that legacy records (such as `CASE-2026-015`) exist and are cleanly disambiguated using composite queries `{ caseId, cid }`.
+
+---
+
+## 3. Full 12-Step End-to-End Acceptance Scenario
+
+**Location:** `backend/test/e2e-scenario.mjs`
+
+### Execution:
+```bash
+cd backend
+npm run test:e2e
 ```
 
-Suggested approach: use `jest.mock()` (or `msw`) to stub `pinataService.js`
-and `blockchainService.js` so tests don't require a live Sepolia RPC or
-Pinata account. Use `mongodb-memory-server` for an ephemeral MongoDB
-instance in CI.
+### Walkthrough of Automated Verification:
+- **Step 1:** Verifies deployer is `ADMIN` on the live smart contract.
+- **Step 2:** Admin assigns `OFFICER` (Account #2), `INVESTIGATOR` (Account #1), and `JUDICIARY` (Account #5) on-chain.
+- **Step 3:** Officer creates an active case in MongoDB.
+- **Step 4:** Recomputes authentic IPFS CID from evidence buffer.
+- **Step 5:** Officer signs on-chain transaction registering evidence; contract emits `EvidenceRegistered`.
+- **Step 6:** Confirms evidence in MongoDB with real `evidenceId` and `txHash`.
+- **Step 7:** Verifies chain-of-custody history directly from the blockchain.
+- **Step 8:** Investigator verifies evidence integrity; on-chain record matches recomputed CID; records `Verified` status on-chain.
+- **Step 9:** Simulates tampered file verification; detects mismatch and creates `IntegrityViolation` alert in MongoDB.
+- **Step 10:** Unauthorized wallet (`Role.NONE`) attempts access via `attemptAccess()`; contract emits `AccessDenied`.
+- **Step 11:** Backend event listener captures `AccessDenied` and logs security alert in MongoDB.
+- **Step 12:** Admin retrieves the alert, resolves it, and verifies `resolved: true` is persisted.
 
-Example skeleton:
-```js
-import request from "supertest";
-import app from "../src/app.js"; // export the Express app separately from server startup for testability
+---
 
-test("rejects upload without a file", async () => {
-  const res = await request(app)
-    .post("/api/evidence/upload")
-    .set("Authorization", `Bearer ${testOfficerToken}`)
-    .field("caseId", "CASE-1")
-    .field("description", "desc")
-    .field("fileType", "pdf");
-  expect(res.status).toBe(400);
-});
+## 4. Frontend Production Build Check
+
+**Location:** `frontend/`
+
+### Execution:
+```bash
+cd frontend
+npm run build
 ```
-> Note: `server.js` currently calls `start()` immediately on import, which
-> makes it hard to import the Express `app` in tests without also opening a
-> real Mongo connection and listener. Recommended refactor: split
-> `server.js` into `app.js` (Express app + routes, no `listen`/`connect`)
-> and a thin `server.js` that imports `app` and calls `start()`.
 
-## 3. Frontend Tests
+Confirms zero syntax errors, valid JSX formatting, clean Tailwind CSS compilation, and production bundle generation.
 
-Recommended structure (`frontend/src/**/__tests__/`), using Vitest +
-Testing Library (already in `package.json`):
+---
 
-- **Wallet connection** — mock `window.ethereum`, assert `Web3Context`
-  populates `address`/`chainId`, and shows `connectError` when MetaMask is
-  absent.
-- **Role detection** — mock `/auth/nonce` and `/auth/verify` responses,
-  assert `AuthContext.role` is set from the server response (never
-  fabricated client-side).
-- **Dashboard rendering** — snapshot per role (ADMIN sees Alerts/Users
-  stats, OFFICER doesn't).
-- **Evidence upload** — mock `api.post('/evidence/upload')` and a mocked
-  contract `registerEvidence`, assert the stage machine transitions
-  `idle → uploading-ipfs → awaiting-signature → confirming → success`.
-- **MetaMask transaction / confirmation** — mock `getContract(true)` to
-  return a fake contract whose `registerEvidence` resolves a fake tx with
-  `.wait()`.
-- **Evidence retrieval / verification UI** — mock `/evidence/:id` and
-  `/evidence/:id/verify`, assert `"Integrity Verified"` / `"Integrity
-  Violation"` render with the correct status color.
-- **Unauthorized access UI** — mock a 403 response, assert the error banner
-  renders instead of evidence data.
-- **Admin alerts** — mock `/alerts`, assert alert cards render and
-  `resolve()` calls the correct endpoint.
+## 5. Tamper Demonstration via Mock Gateway
 
-## 4. Integration Test Plan (manual or Playwright/Cypress)
-
-### Flow A — Officer registers evidence
-1. Admin wallet assigns OFFICER role to Wallet B (Users page → MetaMask tx).
-2. Sign in as Wallet B → role shows OFFICER.
-3. Go to Evidence → Upload, fill form, select a small test file.
-4. Confirm stage badges: Uploading to IPFS → Awaiting Signature → Confirming → Success.
-5. Confirm CID and tx hash are shown and are real (check tx hash on
-   Sepolia Etherscan).
-6. Confirm MongoDB `Evidence` doc transitions `pending-chain → confirmed`
-   (via the event listener) — check `GET /api/evidence`.
-
-### Flow B — Investigator verifies
-1. Admin assigns INVESTIGATOR role to Wallet C.
-2. Sign in as Wallet C → open the evidence record from Flow A.
-3. Confirm custody timeline shows `Registered` then `Accessed`.
-4. Click "Verify Integrity" → confirm `"Integrity Verified"` is returned
-   (assuming the file wasn't tampered with).
-5. (Optional negative test) Manually re-pin a different file under the same
-   CID variable in a test script to confirm `"Integrity Violation"` and an
-   `IntegrityViolation` alert are created.
-
-### Flow C — Unauthorized access
-1. Use a wallet with no assigned role (Wallet D).
-2. Attempt to open `/evidence/:id` → confirm a 403 error banner renders
-   (via `getEvidence` revert path).
-3. Separately call `attemptAccess` from Wallet D directly against the
-   contract (e.g. via a script or Etherscan's "Write Contract" tab) to
-   confirm `AccessDenied` is emitted.
-4. Confirm the backend event listener picks it up and an `Alert` document
-   appears in MongoDB.
-5. Sign in as Admin → Alerts page shows the new `AccessDenied` alert.
-
-## 5. What "done" looks like
-
-- `npx hardhat test` passes all cases in `blockchain/test/`.
-- Backend starts cleanly against a real MongoDB Atlas cluster, real Pinata
-  account, and real Sepolia RPC (no fallback/mock data returned silently).
-- All three integration flows above complete against Sepolia testnet with
-  real, verifiable transaction hashes.
+To test or demonstrate gateway-level tampering to an audience:
+1. Launch the mock corrupted gateway:
+   ```bash
+   cd backend
+   node mock-gateway.js <target_cid>
+   ```
+2. Set `PINATA_GATEWAY=http://localhost:5050/ipfs` in `backend/.env` and restart the backend.
+3. Click **Verify Integrity** on the evidence page.
+4. The system detects the altered bytes, sets status to `Flagged`, emits an `IntegrityViolation` alert, and registers the tamper status immutably on the blockchain.

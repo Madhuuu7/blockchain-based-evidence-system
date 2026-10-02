@@ -34,7 +34,7 @@ export async function uploadEvidence(req, res, next) {
       });
     }
 
-    const cid = await uploadToPinata(
+    const { cid, storage } = await uploadToPinata(
       req.file.buffer,
       req.file.originalname,
       {
@@ -50,14 +50,24 @@ export async function uploadEvidence(req, res, next) {
       fileType,
       fileSize: req.file.size,
       registeredBy: req.wallet,
+      storage,
       status: "pending-chain"
     });
 
     return res.status(201).json({
       draftId: evidenceDraft._id,
       cid,
+      storage,
+      // Say which of the two actually happened. The CID is authentic either
+      // way, but "pinned to IPFS" and "cached on this server" are different
+      // promises and the officer signing the transaction should know which
+      // one they are committing to the chain.
       message:
-        "File pinned to IPFS. Sign the on-chain registration transaction to finalize."
+        storage === "pinata"
+          ? "File pinned to IPFS. Sign the on-chain registration transaction to finalize."
+          : "IPFS pinning unavailable - the file is held in this server's local cache. " +
+            "The CID is genuine, but the file is not yet replicated on the IPFS network. " +
+            "Sign the on-chain registration transaction to finalize."
     });
   } catch (err) {
     console.error("uploadEvidence error:", err);
@@ -339,23 +349,50 @@ export async function verifyEvidence(req, res, next) {
       });
     }
 
+    // Step 1: Retrieve immutable record from blockchain
     const record = await getEvidenceFromChain(
       evidenceId,
       req.wallet
     );
 
+    // Step 2: Fetch actual file bytes from IPFS gateway
     const fileBuffer = await fetchFromIpfs(record.cid);
 
-    const recomputedHash = crypto
+    // Step 3: Recompute genuine IPFS CIDv1 from file bytes
+    const recomputedCid = await recomputeCid(fileBuffer);
+    const sha256Hash = crypto
       .createHash("sha256")
       .update(fileBuffer)
       .digest("hex");
 
-    const evidenceDoc = await Evidence.findOne({
-      evidenceId
-    });
+    // Step 4: Locate the off-chain mirror of this evidence.
+    //
+    // Identity is the case plus the on-chain id - the pair that cannot change.
+    // A redeployed contract restarts evidenceId at 1 while MongoDB keeps the
+    // documents from earlier runs, so the caseId is what separates them.
+    //
+    // Deliberately NOT matched on the CID: a lookup keyed by the CID can only
+    // ever return documents that already agree with the chain, which is the
+    // one thing this check exists to test.
+    const evidenceDoc =
+      (await Evidence.findOne({ caseId: record.caseId, evidenceId })) ||
+      (await Evidence.findOne({ caseId: record.caseId }));
 
-    const integrityVerified = true;
+    // Step 5: Check integrity.
+    //
+    // The blockchain is the source of truth and IPFS holds the bytes, so the
+    // verdict is whether the content still hashes to the CID the chain
+    // recorded. The MongoDB mirror is reported alongside it rather than folded
+    // into it: a mirror that disagrees is a database problem worth an alert,
+    // and a mirror that is missing is neither a pass nor a violation - it is a
+    // fact the caller should see instead of a silent success.
+    const integrityVerified = recomputedCid === record.cid;
+
+    const mirrorState = !evidenceDoc
+      ? "missing"
+      : evidenceDoc.cid === record.cid
+        ? "consistent"
+        : "divergent";
 
     await AccessLog.create({
       evidenceId,
@@ -369,15 +406,38 @@ export async function verifyEvidence(req, res, next) {
         walletAddress: req.wallet,
         evidenceId,
         message:
-          `Integrity check failed for evidence #${evidenceId}: ` +
-          `the stored MongoDB CID does not match the on-chain CID.`
+          `Integrity check failed for evidence #${evidenceId}: content served ` +
+          `by IPFS does not match the on-chain CID (recomputed: ${recomputedCid}, ` +
+          `on-chain: ${record.cid})`
       });
     }
 
+    // A mirror that disagrees with the chain is its own incident: the file is
+    // intact, but the database someone reads for case metadata is not.
+    if (mirrorState === "divergent") {
+      await Alert.create({
+        type: "IntegrityViolation",
+        walletAddress: req.wallet,
+        evidenceId,
+        message:
+          `Database mismatch for evidence #${evidenceId}: the stored CID ` +
+          `(${evidenceDoc.cid}) does not match the on-chain CID (${record.cid}). ` +
+          `The blockchain record is authoritative.`
+      });
+    }
+
+    if (mirrorState === "missing") {
+      console.warn(
+        `[verifyEvidence] No MongoDB record for evidence #${evidenceId} in case ` +
+          `${record.caseId}. Verified against the chain and IPFS only.`
+      );
+    }
+
     if (evidenceDoc) {
-      evidenceDoc.status = integrityVerified
-        ? "verified"
-        : "flagged";
+      evidenceDoc.status =
+        integrityVerified && mirrorState === "consistent"
+          ? "verified"
+          : "flagged";
 
       await evidenceDoc.save();
     }
@@ -388,7 +448,12 @@ export async function verifyEvidence(req, res, next) {
         ? "Integrity Verified"
         : "Integrity Violation",
       onChainCid: record.cid,
-      recomputedHash,
+      recomputedCid,
+      sha256Hash,
+      // "missing" | "consistent" | "divergent" - the state of the off-chain
+      // copy, kept separate from the verdict so neither hides the other.
+      databaseRecord: mirrorState,
+      status: integrityVerified ? "verified" : "flagged",
       note:
         "Caller must also submit recordVerification() on-chain via MetaMask to make this result immutable."
     });

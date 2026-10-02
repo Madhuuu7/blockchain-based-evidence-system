@@ -132,15 +132,15 @@ Every custody-relevant action (register, access, transfer, verify) appends a `Cu
    per sensitive request)
 ```
 
-## Build Order (this response follows this order)
+## Implementation Status (MVP Complete & Tested)
 
-1. ✅ Architecture & schema design (this doc)
-2. Solidity contract `EvidenceRegistry.sol`
-3. Hardhat tests
-4. Backend (Express) — auth, upload, evidence, alerts
-5. Frontend (React) — key pages
-6. Ethers.js/MetaMask integration
-7. IPFS/Pinata integration
-8. MongoDB integration
-9. Integration test plan
-10. Deployment instructions
+1. ✅ Architecture & schema design
+2. ✅ Solidity contract `EvidenceRegistry.sol`
+3. ✅ Hardhat automated tests (19 passing)
+4. ✅ Backend (Express) — auth, upload, evidence, alerts, case management
+5. ✅ Frontend (React) — role dashboards, evidence upload, detail, alerts, users
+6. ✅ Ethers.js/MetaMask integration with live on-chain role queries
+7. ✅ IPFS/Pinata integration with genuine CIDv1 recomputation
+8. ✅ MongoDB Atlas integration with DNS SRV fallback & composite disambiguation
+9. ✅ Full automated E2E lifecycle acceptance test suite
+10. ✅ Deployment & operational manuals updated

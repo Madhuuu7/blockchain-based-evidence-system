@@ -1,3 +1,4 @@
+import dns from "dns";
 import express from "express";
 import mongoose from "mongoose";
 import cors from "cors";
@@ -5,6 +6,27 @@ import helmet from "helmet";
 import morgan from "morgan";
 import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
+
+// Some Windows setups cannot resolve MongoDB Atlas's SRV records through the
+// configured resolver, and the connection fails with a DNS error that looks
+// nothing like a DNS problem. Overriding the resolver fixes it.
+//
+// Off by default: this is a workaround for one machine, and forcing every
+// lookup in the process through a public resolver is not something a server
+// should do to its host without being asked. Set DNS_SERVERS to switch it on,
+// e.g. DNS_SERVERS=8.8.8.8,8.8.4.4
+if (process.env.DNS_SERVERS) {
+  const servers = process.env.DNS_SERVERS.split(",")
+    .map((server) => server.trim())
+    .filter(Boolean);
+
+  try {
+    dns.setServers(servers);
+    console.log("[server] DNS resolver overridden:", servers.join(", "));
+  } catch (e) {
+    console.warn("[server] Could not set custom DNS servers:", e.message);
+  }
+}
 import { startEventListener } from "./services/eventListener.js";
 import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 

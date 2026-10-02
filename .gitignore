@@ -7,3 +7,7 @@ blockchain/artifacts/
 blockchain/cache/
 blockchain/deployments/*.json
 !blockchain/deployments/.gitkeep
+
+# Locally cached IPFS blobs — content addressed, regenerated on demand, and
+# evidence files have no business in version control.
+backend/ipfs_cache/

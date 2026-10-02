@@ -1,3 +1,6 @@
+import fs from "fs";
+import path from "path";
+import { fileURLToPath } from "url";
 import FormData from "form-data";
 import fetch from "node-fetch";
 import { CID } from "multiformats/cid";
@@ -5,35 +8,75 @@ import { sha256 } from "multiformats/hashes/sha2";
 import * as raw from "multiformats/codecs/raw";
 import { env } from "../config/env.js";
 
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const CACHE_DIR = path.join(__dirname, "../../ipfs_cache");
+
+if (!fs.existsSync(CACHE_DIR)) {
+  fs.mkdirSync(CACHE_DIR, { recursive: true });
+}
+
 const PINATA_PIN_FILE_URL = "https://api.pinata.cloud/pinning/pinFileToIPFS";
 
+/**
+ * Store evidence bytes and return the CID the chain will commit to.
+ *
+ * Returns `{ cid, storage }` rather than a bare CID. The CID is authentic
+ * either way - it is derived from the bytes, so integrity verification works
+ * regardless - but `storage` records whether the file was actually pinned to
+ * IPFS or only cached on this host. Collapsing the two would let the chain
+ * assert decentralised availability that does not exist, and nothing would
+ * ever say otherwise.
+ */
 export async function uploadToPinata(fileBuffer, filename, metadata = {}) {
-  if (!env.pinataJwt) {
-    throw new Error("PINATA_JWT not configured — cannot upload to IPFS.");
+  // Always derive authentic IPFS CIDv1 from file bytes
+  const localCid = await recomputeCid(fileBuffer);
+
+  // Cache file locally by authentic CID for guaranteed availability during local demo/testing
+  try {
+    const cachePath = path.join(CACHE_DIR, localCid);
+    fs.writeFileSync(cachePath, fileBuffer);
+  } catch (cacheErr) {
+    console.warn("[pinataService] Failed to write to local IPFS cache:", cacheErr.message);
   }
 
-  const form = new FormData();
-  form.append("file", fileBuffer, { filename });
-  form.append("pinataMetadata", JSON.stringify({ name: filename, keyvalues: metadata }));
-  // cidVersion 1 with raw codec — matches the CID recomputation logic below.
-  form.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
+  // Attempt remote pinning to Pinata if JWT is configured
+  if (env.pinataJwt) {
+    try {
+      const form = new FormData();
+      form.append("file", fileBuffer, { filename });
+      form.append("pinataMetadata", JSON.stringify({ name: filename, keyvalues: metadata }));
+      form.append("pinataOptions", JSON.stringify({ cidVersion: 1 }));
 
-  const response = await fetch(PINATA_PIN_FILE_URL, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${env.pinataJwt}`, ...form.getHeaders() },
-    body: form
-  });
+      const response = await fetch(PINATA_PIN_FILE_URL, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${env.pinataJwt}`, ...form.getHeaders() },
+        body: form
+      });
 
-  if (!response.ok) {
-    const errorText = await response.text();
-    throw new Error(`Pinata upload failed (${response.status}): ${errorText}`);
+      if (response.ok) {
+        const data = await response.json();
+        return { cid: data.IpfsHash, storage: "pinata" };
+      } else {
+        const errorText = await response.text();
+        console.warn(`[pinataService] Remote Pinata pin returned ${response.status}: ${errorText}. Falling back to the local IPFS cache.`);
+      }
+    } catch (err) {
+      console.warn(`[pinataService] Remote Pinata request error: ${err.message}. Falling back to the local IPFS cache.`);
+    }
+  } else {
+    console.warn("[pinataService] PINATA_JWT is not configured. Falling back to the local IPFS cache.");
   }
 
-  const data = await response.json();
-  return data.IpfsHash; // CID
+  return { cid: localCid, storage: "local-cache" };
 }
 
 export async function fetchFromIpfs(cid) {
+  // Check local IPFS cache first
+  const cachePath = path.join(CACHE_DIR, cid);
+  if (fs.existsSync(cachePath)) {
+    return fs.readFileSync(cachePath);
+  }
+
   const url = `${env.pinataGateway}/${cid}`;
   const response = await fetch(url);
   if (!response.ok) {
