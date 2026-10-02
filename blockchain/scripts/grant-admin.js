@@ -47,7 +47,7 @@ async function main() {
   const [signer] = await hre.ethers.getSigners();
   const registry = await hre.ethers.getContractAt("EvidenceRegistry", address, signer);
 
-  const existing = await registry.roles(adminAddress);
+  const existing = await registry.getRole(adminAddress);
 
   if (Number(existing) === ROLE.ADMIN) {
     console.log(`${adminAddress} is already ADMIN on ${network}. Nothing to do.`);
@@ -61,7 +61,7 @@ async function main() {
 
   await tx.wait();
 
-  const confirmed = await registry.roles(adminAddress);
+  const confirmed = await registry.getRole(adminAddress);
 
   if (Number(confirmed) !== ROLE.ADMIN) {
     throw new Error("Role did not take effect - check the transaction on Etherscan.");
