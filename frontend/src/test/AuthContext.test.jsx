@@ -248,6 +248,87 @@ describe("AuthProvider sign-out", () => {
   });
 });
 
+describe("AuthProvider account switching", () => {
+  function renderWithSession({ sessionFor, walletNow }) {
+    window.localStorage.setItem("evidence_system_jwt", "jwt-token");
+    window.localStorage.setItem("evidence_system_role", "ADMIN");
+    window.localStorage.setItem("evidence_system_address", sessionFor);
+    mockWeb3.address = walletNow;
+
+    return render(
+      <AuthProvider>
+        <SignInProbe />
+      </AuthProvider>
+    );
+  }
+
+  it("ends the session when the wallet switches to a different account", () => {
+    // Otherwise the sidebar keeps showing ADMIN and every request still goes
+    // out with the previous wallet's token, while MetaMask displays another.
+    renderWithSession({
+      sessionFor: "0xd59c546811e9f6df6b09ec3a63d0da98d2a2093c",
+      walletNow: "0x680b318d16809581ba93270fa6cb8b0be09dd9ce"
+    });
+
+    expect(window.localStorage.getItem("evidence_system_jwt")).toBeNull();
+    expect(screen.getByTestId("role")).toHaveTextContent("none");
+  });
+
+  it("keeps the session when the wallet is the same account", () => {
+    renderWithSession({
+      sessionFor: "0xd59c546811e9f6df6b09ec3a63d0da98d2a2093c",
+      walletNow: "0xd59c546811e9f6df6b09ec3a63d0da98d2a2093c"
+    });
+
+    expect(window.localStorage.getItem("evidence_system_jwt")).toBe("jwt-token");
+    expect(screen.getByTestId("role")).toHaveTextContent("ADMIN");
+  });
+
+  it("compares addresses without regard to case", () => {
+    // MetaMask reports checksummed addresses; the API returns lowercase. A
+    // plain string comparison would log everyone out on every page load.
+    renderWithSession({
+      sessionFor: "0xd59c546811e9f6df6b09ec3a63d0da98d2a2093c",
+      walletNow: "0xD59C546811E9F6DF6B09ec3a63d0da98D2a2093c"
+    });
+
+    expect(window.localStorage.getItem("evidence_system_jwt")).toBe("jwt-token");
+  });
+
+  it("keeps the session while the wallet has not reported an account yet", () => {
+    // A restored session with the wallet still waking up must not be mistaken
+    // for an account switch.
+    renderWithSession({
+      sessionFor: "0xd59c546811e9f6df6b09ec3a63d0da98d2a2093c",
+      walletNow: null
+    });
+
+    expect(window.localStorage.getItem("evidence_system_jwt")).toBe("jwt-token");
+  });
+
+  it("records which wallet a new session belongs to", async () => {
+    const signMessage = vi.fn().mockResolvedValue("0xsignature");
+    mockWeb3.address = "0xabc";
+    mockWeb3.signer = { signMessage };
+    mockApi.post = vi.fn((url) => {
+      if (url === "/auth/nonce") return Promise.resolve({ data: { message: "Nonce: abc123" } });
+      return Promise.resolve({ data: { token: "jwt-token", role: "OFFICER", address: "0xabc" } });
+    });
+
+    render(
+      <AuthProvider>
+        <SignInProbe />
+      </AuthProvider>
+    );
+
+    await act(async () => {
+      screen.getByText("sign in").click();
+    });
+
+    expect(window.localStorage.getItem("evidence_system_address")).toBe("0xabc");
+  });
+});
+
 describe("useAuth", () => {
   it("refuses to be used outside an AuthProvider", () => {
     const quiet = vi.spyOn(console, "error").mockImplementation(() => {});

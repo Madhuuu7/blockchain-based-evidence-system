@@ -22,6 +22,18 @@ export function AuthProvider({ children }) {
     }
   });
 
+  // Which wallet this session was issued to. Without it, switching accounts in
+  // MetaMask left the previous session in place: the sidebar kept showing the
+  // old role and every request still carried the old wallet's token, so the
+  // interface said one thing and the API was doing another.
+  const [sessionAddress, setSessionAddress] = useState(() => {
+    try {
+      return localStorage.getItem("evidence_system_address");
+    } catch {
+      return null;
+    }
+  });
+
   const [authError, setAuthError] = useState(null);
   const [isAuthenticating, setIsAuthenticating] = useState(false);
 
@@ -59,7 +71,9 @@ export function AuthProvider({ children }) {
 
     localStorage.setItem("evidence_system_jwt", verifyData.token);
     localStorage.setItem("evidence_system_role", verifyData.role);
+    localStorage.setItem("evidence_system_address", verifyData.address);
 
+    setSessionAddress(verifyData.address);
     setRole(verifyData.role);
 
     return verifyData.role;
@@ -73,8 +87,26 @@ export function AuthProvider({ children }) {
   const signOut = useCallback(() => {
     localStorage.removeItem("evidence_system_jwt");
     localStorage.removeItem("evidence_system_role");
+    localStorage.removeItem("evidence_system_address");
+    setSessionAddress(null);
     setRole(null);
   }, []);
+
+  // End the session the moment the wallet changes to a different account.
+  //
+  // The session proves one specific wallet signed a challenge, so it stops
+  // meaning anything as soon as the user is holding a different wallet.
+  // Leaving it in place let someone act as the previous account - with its
+  // role and its token - while MetaMask displayed another, which is both
+  // confusing and wrong. Signing out sends them back to the login screen to
+  // prove ownership of the new account instead.
+  useEffect(() => {
+    if (!address || !sessionAddress) return;
+
+    if (address.toLowerCase() !== sessionAddress.toLowerCase()) {
+      signOut();
+    }
+  }, [address, sessionAddress, signOut]);
 
   return (
     <AuthContext.Provider value={{ role, signIn, signOut, authError, isAuthenticating }}>
