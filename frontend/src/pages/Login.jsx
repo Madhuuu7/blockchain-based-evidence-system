@@ -2,6 +2,7 @@ import React from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useWeb3 } from "../context/Web3Context.jsx";
+import NetworkBanner from "../components/NetworkBanner.jsx";
 
 export default function Login() {
   const { signIn, authError, isAuthenticating } = useAuth();
@@ -26,6 +27,10 @@ export default function Login() {
           verified directly against the smart contract — it is never taken from local storage
           or the frontend.
         </p>
+
+        <div className="mt-6">
+          <NetworkBanner />
+        </div>
 
         <button
           onClick={handleSignIn}

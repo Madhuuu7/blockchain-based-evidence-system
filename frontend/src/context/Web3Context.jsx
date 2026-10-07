@@ -62,6 +62,91 @@ export function Web3Provider({ children }) {
 
   /*
   |--------------------------------------------------------------------------
+  | Switch the wallet to the expected network
+  |--------------------------------------------------------------------------
+  |
+  | Telling someone they are on the wrong network and leaving them to find it
+  | is not much help: MetaMask hides test networks by default, and the toggle
+  | that reveals them has moved between versions. wallet_switchEthereumChain
+  | asks the wallet to change networks directly, and error 4902 means the
+  | wallet does not know this chain yet, so we offer to add it first.
+  |
+  | The RPC and explorer below are only used when the chain has to be added.
+  | A wallet that already knows the chain keeps its own settings.
+  */
+  const NETWORK_DETAILS = {
+    11155111: {
+      chainName: "Sepolia",
+      nativeCurrency: { name: "Sepolia Ether", symbol: "ETH", decimals: 18 },
+      rpcUrls: [
+        import.meta.env.VITE_RPC_URL || "https://ethereum-sepolia-rpc.publicnode.com"
+      ],
+      blockExplorerUrls: ["https://sepolia.etherscan.io"]
+    },
+    31337: {
+      chainName: "Hardhat Local",
+      nativeCurrency: { name: "Ether", symbol: "ETH", decimals: 18 },
+      rpcUrls: ["http://127.0.0.1:8545"],
+      blockExplorerUrls: []
+    }
+  };
+
+  const switchNetwork = useCallback(async () => {
+    if (!window.ethereum) {
+      setConnectError("MetaMask is not installed");
+      return false;
+    }
+
+    const hexChainId = "0x" + EXPECTED_CHAIN_ID.toString(16);
+
+    try {
+      await window.ethereum.request({
+        method: "wallet_switchEthereumChain",
+        params: [{ chainId: hexChainId }]
+      });
+
+      setConnectError(null);
+      return true;
+    } catch (err) {
+      // 4902: the wallet has no entry for this chain. Offer to add it.
+      if (err?.code === 4902 || err?.data?.originalError?.code === 4902) {
+        const details = NETWORK_DETAILS[EXPECTED_CHAIN_ID];
+
+        if (!details) {
+          setConnectError(
+            `MetaMask does not know chain ID ${EXPECTED_CHAIN_ID}, and this app has no ` +
+              `details to add it with. Add it manually in MetaMask.`
+          );
+          return false;
+        }
+
+        try {
+          await window.ethereum.request({
+            method: "wallet_addEthereumChain",
+            params: [{ chainId: hexChainId, ...details }]
+          });
+
+          setConnectError(null);
+          return true;
+        } catch (addErr) {
+          setConnectError(addErr.message || "Could not add the network to MetaMask");
+          return false;
+        }
+      }
+
+      // 4001 is the user declining the prompt, which is not a fault.
+      if (err?.code === 4001) {
+        setConnectError("Network switch cancelled.");
+        return false;
+      }
+
+      setConnectError(err.message || "Could not switch network");
+      return false;
+    }
+  }, []);
+
+  /*
+  |--------------------------------------------------------------------------
   | Get contract
   |--------------------------------------------------------------------------
   */
@@ -423,10 +508,16 @@ export function Web3Provider({ children }) {
 
         connect,
         disconnect,
+        switchNetwork,
 
         getContract,
 
         refreshRole,
+
+        // True once the wallet has reported a chain and it is not the one this
+        // deployment talks to. Null chainId means "not connected yet", which is
+        // not the same thing and must not light up the warning.
+        isWrongNetwork: chainId !== null && chainId !== EXPECTED_CHAIN_ID,
 
         canTransferCustody,
         canVerifyEvidence,

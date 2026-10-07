@@ -2,6 +2,7 @@ import React from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext.jsx";
 import { useWeb3 } from "../context/Web3Context.jsx";
+import NetworkBanner from "./NetworkBanner.jsx";
 
 const NAV_BY_ROLE = {
   ADMIN: [
@@ -70,7 +71,10 @@ export default function Layout({ children }) {
           </button>
         </div>
       </aside>
-      <main className="flex-1 bg-ocean-50 p-8 overflow-y-auto">{children}</main>
+      <main className="flex-1 bg-ocean-50 p-8 overflow-y-auto">
+        <NetworkBanner />
+        {children}
+      </main>
     </div>
   );
 }
