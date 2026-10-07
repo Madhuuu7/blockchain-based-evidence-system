@@ -168,50 +168,61 @@ VITE_RPC_URL=http://127.0.0.1:8545
 
 ---
 
-## 8. How to Run the System (Local Demo)
+## 8. How to Run the System
 
-### Terminal 1: Local Blockchain Node
-```bash
-cd blockchain
-npx hardhat node
-```
-*Leave running on `http://127.0.0.1:8545`.*
+**The system runs on the Sepolia public testnet by default.** The contract is
+deployed, all four roles are assigned, and the demonstration data is in place,
+so starting it is two commands:
 
-### Terminal 2: Deploy Contract
 ```bash
-cd blockchain
-npm run deploy:local
+cd backend   && npm start      # http://localhost:4000
+cd frontend  && npm run dev    # http://localhost:5173
 ```
-*Confirmed deployed address: `0x5FbDB2315678afecb367f032d93F642f64180aa3`.*
 
-### Terminal 3: Backend API & Event Listener
-```bash
-cd backend
-npm run dev
-```
-*Starts server on `http://localhost:4000` with active event polling.*
+There is no chain to run and no contract to deploy — both already exist on a
+public network, and they survive restarting or closing the laptop.
 
-### Terminal 4: Frontend Web App
+- **Contract:** `0xd2dc06254EC6F920e98e0E5CB4Fc028F3b2a410C`
+- **Etherscan:** https://sepolia.etherscan.io/address/0xd2dc06254EC6F920e98e0E5CB4Fc028F3b2a410C
+
+Running against a local Hardhat chain is still supported and is the faster
+option while developing. It needs four terminals and the chain resets whenever
+it stops.
+
+**Full instructions for both, a demonstration script, and a troubleshooting
+section: [docs/running.md](docs/running.md).**
+
+Before demonstrating, confirm the environment is wired up:
+
 ```bash
-cd frontend
-npm run dev
+cd backend && npm run check
 ```
-*Opens at `http://localhost:5173`.*
 
 ---
 
-## 9. MetaMask Configuration for Local Testing
+## 9. MetaMask Configuration
 
-1. Open MetaMask -> **Add network manually**:
-   - **Network Name:** Hardhat Local
-   - **RPC URL:** `http://127.0.0.1:8545`
-   - **Chain ID:** `31337`
-   - **Currency Symbol:** ETH
-2. Import Test Accounts using private keys from the Hardhat node:
-   - **Admin (Account #0):** `0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80`
-   - **Investigator (Account #1):** `0x59c6995e998f97a5a0044966f0945389dc9e86dae88c7a8412f4603b6b78690d`
-   - **Officer (Account #2):** `0x5de4111afa1a4b94908f83103eb1f1706367c2e68ca870fc3fb9a804cdab365a`
-   - **Judiciary (Account #5):** `0x8b3a350cf5c34c9194ca85829a2df0ec3153be0318b5e2d3348e872092edffba`
+Network: **Sepolia** (chain id 11155111). If it is not in the network list,
+MetaMask is hiding test networks — the application shows a **Switch to Sepolia**
+button that does it for you.
+
+Accounts: use wallets generated in MetaMask from your own recovery phrase. The
+roles on the deployed contract are held by:
+
+| Role | Address |
+| --- | --- |
+| ADMIN | `0xd59C546811E9F6DF6B09ec3a63d0da98D2a2093c` |
+| OFFICER | `0x8085D31a8ff75cfE446cFBcAfcfdDb2dB0c46Bc6` |
+| INVESTIGATOR | `0x680B318d16809581BA93270Fa6cB8b0BE09dD9CE` |
+| JUDICIARY | `0x99b5506C0438b846E27251249aCf8604F04d513f` |
+
+> **Do not use the Hardhat test accounts on a public network.** Their private
+> keys are published in Hardhat's documentation and are the same on every
+> machine, so they are fine on a local chain and unsafe anywhere else — granting
+> one a role would let anyone who read this repository take over the contract.
+> Importing such a key into MetaMask does not make it private.
+>
+> For a **local** chain only, import the keys printed by `npx hardhat node`.
 
 ---
 
@@ -223,9 +234,17 @@ cd blockchain
 npx hardhat test
 ```
 
-### Backend Unit & Integration Tests
+### Backend Unit & Integration Tests (117 tests)
 ```bash
 cd backend
+npm test
+```
+*Runs offline against an in-memory MongoDB — no database, network or deployed
+contract required.*
+
+### Frontend Component Tests (38 tests)
+```bash
+cd frontend
 npm test
 ```
 
@@ -234,6 +253,7 @@ npm test
 cd backend
 npm run test:e2e
 ```
+*Requires a **local** chain with all four services running.*
 
 ### Frontend Production Build Test
 ```bash
