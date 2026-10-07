@@ -1,6 +1,7 @@
 import jwt from "jsonwebtoken";
 import { env } from "../config/env.js";
 import { getRoleForAddress } from "../services/blockchainService.js";
+import { recordSecurityAlert } from "../services/securityAlertService.js";
 
 /**
  * Verifies the session JWT (issued after wallet-signature verification in
@@ -35,6 +36,19 @@ export function requireRole(...allowedRoles) {
     try {
       const role = await getRoleForAddress(req.wallet);
       if (!allowedRoles.includes(role)) {
+        // A valid session reaching for something its role does not cover.
+        // Usually a stale browser tab after a role change; occasionally
+        // someone walking the API to see what answers. Either way the
+        // administrator should be able to see it happened.
+        await recordSecurityAlert({
+          type: "UnauthorizedApi",
+          walletAddress: req.wallet,
+          route: `${req.method} ${req.baseUrl || ""}${req.route?.path || req.path}`,
+          message:
+            `${req.wallet} holds ${role} and was refused ${req.method} ` +
+            `${req.originalUrl}, which requires one of [${allowedRoles.join(", ")}].`
+        });
+
         return res.status(403).json({ error: `Requires one of roles [${allowedRoles.join(", ")}], caller has ${role}` });
       }
       req.role = role;

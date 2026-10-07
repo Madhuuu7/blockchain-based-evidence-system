@@ -3,6 +3,16 @@ import Layout from "../components/Layout.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 import api from "../services/api.js";
 
+// How each alert type reads at a glance, and the plain-English label for it.
+// The raw enum names come from the contract and the API; an administrator
+// scanning this page should not have to translate them.
+const ALERT_TYPES = {
+  AccessDenied: { tone: "error", label: "Access Denied (on-chain)" },
+  IntegrityViolation: { tone: "error", label: "Integrity Violation" },
+  LoginDenied: { tone: "pending", label: "Login Denied" },
+  UnauthorizedApi: { tone: "pending", label: "Unauthorized API Call" }
+};
+
 export default function Alerts() {
   const [alerts, setAlerts] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -75,8 +85,10 @@ export default function Alerts() {
             className="bg-white border border-ocean-200 rounded px-3 py-1.5 text-xs text-ocean-900"
           >
             <option value="all">All Types</option>
-            <option value="AccessDenied">Access Denied</option>
+            <option value="AccessDenied">Access Denied (on-chain)</option>
             <option value="IntegrityViolation">Integrity Violation</option>
+            <option value="LoginDenied">Login Denied</option>
+            <option value="UnauthorizedApi">Unauthorized API Call</option>
           </select>
 
           <button
@@ -112,7 +124,17 @@ export default function Alerts() {
           >
             <div className="flex-1">
               <div className="flex items-center gap-2">
-                <StatusBadge tone={a.type === "AccessDenied" ? "error" : "pending"}>{a.type}</StatusBadge>
+                <StatusBadge tone={ALERT_TYPES[a.type]?.tone || "pending"}>
+                  {ALERT_TYPES[a.type]?.label || a.type}
+                </StatusBadge>
+                {a.occurrences > 1 && (
+                  // A burst of attempts is a different signal from a single
+                  // one, so the count sits next to the type rather than being
+                  // buried in the message.
+                  <span className="text-xs font-semibold text-status-danger bg-status-danger/10 border border-status-danger/30 px-2 py-0.5 rounded">
+                    ×{a.occurrences}
+                  </span>
+                )}
                 {a.resolved ? (
                   <StatusBadge tone="success">Resolved ✓</StatusBadge>
                 ) : (
@@ -131,6 +153,18 @@ export default function Alerts() {
                   <div>
                     <span className="text-slate-500">Evidence ID:</span>{" "}
                     <span className="font-semibold text-accent-700">#{a.evidenceId}</span>
+                  </div>
+                )}
+                {a.route && (
+                  <div>
+                    <span className="text-slate-500">Endpoint:</span>{" "}
+                    <span className="font-mono text-ocean-700">{a.route}</span>
+                  </div>
+                )}
+                {a.occurrences > 1 && a.lastSeenAt && (
+                  <div>
+                    <span className="text-slate-500">Last seen:</span>{" "}
+                    <span className="text-ocean-700">{new Date(a.lastSeenAt).toLocaleString()}</span>
                   </div>
                 )}
                 {a.txHash && (
