@@ -6,7 +6,7 @@ import NetworkBanner from "../components/NetworkBanner.jsx";
 
 export default function Login() {
   const { signIn, authError, isAuthenticating } = useAuth();
-  const { connectError } = useWeb3();
+  const { connectError, address, requestAccountChange } = useWeb3();
   const navigate = useNavigate();
 
   const handleSignIn = async () => {
@@ -39,6 +39,27 @@ export default function Login() {
         >
           {isAuthenticating ? "Waiting for signature..." : "Connect Wallet & Sign In"}
         </button>
+
+        {address && (
+          // Changing the active account in MetaMask does not grant this site
+          // access to it - permission is per account - so without this the app
+          // keeps signing in as whichever account was connected first, however
+          // many times the user switches.
+          <div className="mt-3 text-center text-xs text-slate-500">
+            <span>
+              Will sign in as{" "}
+              <span className="font-mono text-ocean-700">
+                {address.slice(0, 6)}…{address.slice(-4)}
+              </span>
+            </span>
+            <button
+              onClick={requestAccountChange}
+              className="ml-2 text-accent-700 underline hover:text-accent-800"
+            >
+              Use a different account
+            </button>
+          </div>
+        )}
 
         {(authError || connectError) && (
           <div className="mt-4 text-sm text-status-danger bg-status-danger/10 border border-status-danger/30 rounded p-3">

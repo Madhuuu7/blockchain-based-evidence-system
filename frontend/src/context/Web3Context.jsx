@@ -312,6 +312,65 @@ export function Web3Provider({ children }) {
 
   /*
   |--------------------------------------------------------------------------
+  | Ask the wallet which account to use
+  |--------------------------------------------------------------------------
+  |
+  | Changing the active account in MetaMask does not give a site access to it.
+  | Permission is granted per account, so eth_accounts keeps returning only
+  | whichever account was connected first, no accountsChanged event is emitted
+  | because the connected set has not changed, and the app goes on seeing the
+  | old wallet however many times the user switches.
+  |
+  | wallet_requestPermissions re-opens MetaMask's account picker so the user
+  | can hand over a different account - the only way a site can prompt for this
+  | rather than asking the user to find it in the connection settings.
+  */
+  const requestAccountChange = useCallback(async () => {
+    if (!window.ethereum) {
+      setConnectError("MetaMask is not installed");
+      return null;
+    }
+
+    try {
+      await window.ethereum.request({
+        method: "wallet_requestPermissions",
+        params: [{ eth_accounts: {} }]
+      });
+
+      const browserProvider = new BrowserProvider(window.ethereum);
+      const accounts = await browserProvider.send("eth_accounts", []);
+
+      if (!accounts || accounts.length === 0) {
+        setConnectError("No account was selected");
+        return null;
+      }
+
+      const newSigner = await browserProvider.getSigner();
+      const network = await browserProvider.getNetwork();
+
+      setProvider(browserProvider);
+      setSigner(newSigner);
+      setAddress(accounts[0]);
+      setChainId(Number(network.chainId));
+      setConnectError(null);
+
+      await fetchUserRole(accounts[0], browserProvider);
+
+      return accounts[0];
+    } catch (err) {
+      // 4001 is the user closing the picker without choosing.
+      if (err?.code === 4001) {
+        setConnectError("Account selection cancelled.");
+        return null;
+      }
+
+      setConnectError(err.message || "Could not change account");
+      return null;
+    }
+  }, [fetchUserRole]);
+
+  /*
+  |--------------------------------------------------------------------------
   | Disconnect wallet
   |--------------------------------------------------------------------------
   */
@@ -508,6 +567,7 @@ export function Web3Provider({ children }) {
 
         connect,
         disconnect,
+        requestAccountChange,
         switchNetwork,
 
         getContract,
