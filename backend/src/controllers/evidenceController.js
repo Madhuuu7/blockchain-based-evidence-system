@@ -374,9 +374,22 @@ export async function verifyEvidence(req, res, next) {
     // Deliberately NOT matched on the CID: a lookup keyed by the CID can only
     // ever return documents that already agree with the chain, which is the
     // one thing this check exists to test.
+    //
+    // The fallback is restricted to documents that carry no evidenceId at all.
+    // A redeployed chain renumbers from 1 while MongoDB keeps the old
+    // documents, so an upload whose transaction never confirmed can sit in the
+    // case with its id still unset, and that document genuinely may be this
+    // evidence. A document carrying a *different* id is a different exhibit:
+    // matching it would compare this evidence against another file, report the
+    // mirror divergent, raise an alert and flag the wrong record - all from a
+    // document that was never this one. Cases routinely hold several exhibits,
+    // so that is the normal path, not an edge case.
     const evidenceDoc =
       (await Evidence.findOne({ caseId: record.caseId, evidenceId })) ||
-      (await Evidence.findOne({ caseId: record.caseId }));
+      (await Evidence.findOne({
+        caseId: record.caseId,
+        evidenceId: { $in: [null, undefined] }
+      }));
 
     // Step 5: Check integrity.
     //

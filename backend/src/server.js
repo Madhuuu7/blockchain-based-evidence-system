@@ -1,11 +1,7 @@
 import dns from "dns";
-import express from "express";
 import mongoose from "mongoose";
-import cors from "cors";
-import helmet from "helmet";
-import morgan from "morgan";
-import rateLimit from "express-rate-limit";
 import { env } from "./config/env.js";
+import { createApp } from "./app.js";
 
 // Some Windows setups cannot resolve MongoDB Atlas's SRV records through the
 // configured resolver, and the connection fails with a DNS error that looks
@@ -27,36 +23,10 @@ if (process.env.DNS_SERVERS) {
     console.warn("[server] Could not set custom DNS servers:", e.message);
   }
 }
-import { startEventListener } from "./services/eventListener.js";
-import { errorHandler, notFoundHandler } from "./middleware/errorHandler.js";
 
-import authRoutes from "./routes/authRoutes.js";
-import evidenceRoutes from "./routes/evidenceRoutes.js";
-import caseRoutes from "./routes/caseRoutes.js";
-import alertRoutes from "./routes/alertRoutes.js";
-import userRoutes from "./routes/userRoutes.js";
+const { startEventListener } = await import("./services/eventListener.js");
 
-const app = express();
-
-app.use(helmet());
-app.use(cors({ origin: env.frontendOrigin, credentials: true }));
-app.use(express.json());
-app.use(morgan("dev"));
-
-// Basic protection against brute-force / abusive API access
-const apiLimiter = rateLimit({ windowMs: 15 * 60 * 1000, max: 300 });
-app.use("/api", apiLimiter);
-
-app.get("/api/health", (req, res) => res.json({ status: "ok", time: new Date().toISOString() }));
-
-app.use("/api/auth", authRoutes);
-app.use("/api/evidence", evidenceRoutes);
-app.use("/api/cases", caseRoutes);
-app.use("/api/alerts", alertRoutes);
-app.use("/api/users", userRoutes);
-
-app.use(notFoundHandler);
-app.use(errorHandler);
+const app = createApp();
 
 async function start() {
   try {

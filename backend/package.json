@@ -5,8 +5,11 @@
   "scripts": {
     "start": "node src/server.js",
     "dev": "nodemon src/server.js",
-    "test": "node --test test/system-check.mjs",
-    "test:e2e": "node test/e2e-scenario.mjs"
+    "test": "node --experimental-test-module-mocks --test \"test/unit/*.test.mjs\" \"test/integration/*.test.mjs\"",
+    "test:e2e": "node test/e2e-scenario.mjs",
+    "test:unit": "node --experimental-test-module-mocks --test \"test/unit/*.test.mjs\"",
+    "test:integration": "node --experimental-test-module-mocks --test \"test/integration/*.test.mjs\"",
+    "check": "node test/system-check.mjs"
   },
   "dependencies": {
     "cors": "^2.8.5",
@@ -25,7 +28,8 @@
   },
   "devDependencies": {
     "jest": "^29.7.0",
+    "mongodb-memory-server": "^11.3.0",
     "nodemon": "^3.1.4",
-    "supertest": "^7.0.0"
+    "supertest": "^7.3.1"
   }
 }
