@@ -234,7 +234,7 @@ cd blockchain
 npx hardhat test
 ```
 
-### Backend Unit & Integration Tests (117 tests)
+### Backend Unit & Integration Tests (136 tests)
 ```bash
 cd backend
 npm test
@@ -260,6 +260,19 @@ npm run test:e2e
 cd frontend
 npm run build
 ```
+
+**193 tests in total**, and all three suites run without a database, a network
+or a deployed contract.
+
+### A note on `npm audit`
+
+The backend and the frontend report no advisories. `blockchain/` reports
+several, and they are all in the Hardhat toolchain: the compiler, the test
+runner and the deployment scripts. None of it is shipped — what is deployed
+is the compiled contract, already on Sepolia — and none of it is reachable by
+a user of the system. Clearing them requires Hardhat 3, which is a rewrite
+with a different configuration format and plugin API, so this project stays
+on Hardhat 2 deliberately rather than by neglect.
 
 ---
 
