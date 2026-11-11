@@ -1,5 +1,7 @@
 # Blockchain-Based Cybercrime Evidence Management System
 
+[![tests](https://github.com/Madhuuu7/blockchain-based-evidence-system/actions/workflows/tests.yml/badge.svg)](https://github.com/Madhuuu7/blockchain-based-evidence-system/actions/workflows/tests.yml)
+
 > **A tamper-evident, decentralized digital evidence management and chain-of-custody platform combining Ethereum smart contracts, IPFS/Pinata distributed storage, Node.js/Express REST APIs, and a React/MetaMask interface.**
 
 ---
