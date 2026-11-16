@@ -3,7 +3,8 @@
  *
  * Every role that *writes* to the chain needs gas of its own: an ADMIN
  * assigning roles, an OFFICER registering evidence, an INVESTIGATOR
- * transferring custody. A JUDICIARY account only reads, so it needs nothing.
+ * transferring custody. A JUDICIARY account needs none to sign in or read, but
+ * recording a verification is a transaction, so it needs gas for that too.
  *
  * One faucet claim funds the deployer; this hands out the rest, so nobody has
  * to go back to a faucet for each account.

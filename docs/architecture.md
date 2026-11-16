@@ -36,7 +36,7 @@
 | ADMIN | 1 | assignRole/removeRole, view all alerts, view audit data |
 | OFFICER | 2 | registerEvidence, view own submissions |
 | INVESTIGATOR | 3 | recordAccess, transferCustody, verify evidence |
-| JUDICIARY | 4 | recordAccess (read-only), view custody history |
+| JUDICIARY | 4 | recordAccess (read-only), view custody history, recordVerification (a transaction, so the account needs gas) |
 
 Role is **not** stored in MongoDB as the authorization source — it's read live from the contract (`getRole(address)`) on every sensitive action. MongoDB may cache it for UI speed but the contract is always re-checked for anything state-changing.
 
