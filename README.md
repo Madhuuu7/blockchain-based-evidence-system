@@ -236,7 +236,7 @@ cd blockchain
 npx hardhat test
 ```
 
-### Backend Unit & Integration Tests (136 tests)
+### Backend Unit & Integration Tests (147 tests)
 ```bash
 cd backend
 npm test
@@ -244,7 +244,7 @@ npm test
 *Runs offline against an in-memory MongoDB — no database, network or deployed
 contract required.*
 
-### Frontend Component Tests (38 tests)
+### Frontend Component Tests (41 tests)
 ```bash
 cd frontend
 npm test
@@ -263,7 +263,7 @@ cd frontend
 npm run build
 ```
 
-**193 tests in total**, and all three suites run without a database, a network
+**207 tests in total**, and all three suites run without a database, a network
 or a deployed contract.
 
 ### A note on `npm audit`

@@ -1,5 +1,6 @@
 import React, {
   useEffect,
+  useRef,
   useState
 } from "react";
 
@@ -11,6 +12,35 @@ import Layout from "../components/Layout.jsx";
 import StatusBadge from "../components/StatusBadge.jsx";
 
 import api from "../services/api.js";
+
+
+// What the browser can show in the page, keyed by the media type the server
+// read from the file's own bytes. Anything else is offered as a download.
+const EXTENSIONS = {
+  "image/png": "png",
+  "image/jpeg": "jpg",
+  "image/gif": "gif",
+  "image/webp": "webp",
+  "image/bmp": "bmp",
+  "application/pdf": "pdf",
+  "application/zip": "zip",
+  "video/mp4": "mp4",
+  "audio/mpeg": "mp3",
+  "audio/wav": "wav",
+  "text/plain": "txt"
+};
+
+export function previewKind(mime) {
+  const type = (mime || "").split(";")[0].trim();
+
+  if (type.startsWith("image/")) return "image";
+  if (type === "application/pdf") return "pdf";
+  if (type === "video/mp4") return "video";
+  if (type.startsWith("audio/")) return "audio";
+  if (type === "text/plain") return "text";
+
+  return "none";
+}
 
 
 const CUSTODY_ICON = {
@@ -68,6 +98,11 @@ export default function EvidenceDetail() {
 
   const [downloading, setDownloading] = useState(false);
 
+  // The exhibit itself: { kind, mime, url, text } once retrieved.
+  const [file, setFile] = useState(null);
+  const [fileState, setFileState] = useState("idle");
+  const fileUrlRef = useRef(null);
+
 
   // ------------------------------------------------------------
   // Load evidence + custody history
@@ -110,6 +145,61 @@ export default function EvidenceDetail() {
 
 
   // ------------------------------------------------------------
+  // Retrieve the exhibit from IPFS so it can be shown in the page
+  // ------------------------------------------------------------
+
+  const releaseFile = () => {
+    if (fileUrlRef.current) {
+      window.URL.revokeObjectURL(fileUrlRef.current);
+      fileUrlRef.current = null;
+    }
+  };
+
+  const loadFile = async () => {
+    setFileState("loading");
+
+    try {
+      const res = await api.get(`/evidence/${id}/file`, { responseType: "blob" });
+
+      const blob = res.data;
+      const mime = blob.type || "application/octet-stream";
+      const kind = previewKind(mime);
+
+      releaseFile();
+      const url = window.URL.createObjectURL(blob);
+      fileUrlRef.current = url;
+
+      const next = { kind, mime, url, text: null };
+
+      if (kind === "text") {
+        // Rendered as text content, never as markup.
+        next.text = (await blob.text()).slice(0, 20000);
+      }
+
+      setFile(next);
+      setFileState("ready");
+
+      return next;
+    } catch (err) {
+      console.error("Failed to retrieve evidence file:", err);
+      setFile(null);
+      setFileState("error");
+
+      return null;
+    }
+  };
+
+  useEffect(() => {
+    setFile(null);
+    loadFile();
+
+    return releaseFile;
+
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+
+  // ------------------------------------------------------------
   // Download / View File from IPFS
   // ------------------------------------------------------------
 
@@ -117,20 +207,24 @@ export default function EvidenceDetail() {
     try {
       setDownloading(true);
       setError(null);
-      const res = await api.get(`/evidence/${id}/file`, { responseType: "blob" });
-      const blobUrl = window.URL.createObjectURL(new Blob([res.data]));
+      const current = file || (await loadFile());
+
+      if (!current) {
+        throw new Error("Failed to download evidence file. You may not be authorized.");
+      }
+
+      const extension = EXTENSIONS[current.mime.split(";")[0].trim()] || "bin";
       const link = document.createElement("a");
-      link.href = blobUrl;
-      const extension = evidence?.fileType?.includes("/") ? evidence.fileType.split("/")[1] : "bin";
+      link.href = current.url;
       link.setAttribute("download", `evidence-${id}-${evidence?.caseId || "file"}.${extension}`);
       document.body.appendChild(link);
       link.click();
       link.remove();
-      window.URL.revokeObjectURL(blobUrl);
     } catch (err) {
       console.error("Failed to download file:", err);
       setError(
         err.response?.data?.error ||
+        err.message ||
         "Failed to download evidence file. You may not be authorized."
       );
     } finally {
@@ -473,13 +567,79 @@ export default function EvidenceDetail() {
               {evidence.description}
             </p>
 
+            {/* =================================================
+                THE EXHIBIT ITSELF
+            ================================================== */}
+
+            <div
+              data-testid="evidence-preview"
+              className="mt-2 rounded-lg border border-ocean-200 bg-ocean-100/40 overflow-hidden"
+            >
+
+              {fileState === "loading" && (
+                <div className="p-4 text-xs text-slate-500">
+                  Retrieving the file from IPFS...
+                </div>
+              )}
+
+              {fileState === "error" && (
+                <div className="p-4 text-xs text-status-danger">
+                  The file could not be retrieved from IPFS.{" "}
+                  <button onClick={loadFile} className="underline">
+                    Try again
+                  </button>
+                </div>
+              )}
+
+              {fileState === "ready" && file?.kind === "image" && (
+                <a href={file.url} target="_blank" rel="noreferrer" title="Open full size">
+                  <img
+                    src={file.url}
+                    alt={`Evidence #${id}: ${evidence.description || "exhibit"}`}
+                    className="w-full max-h-[28rem] object-contain bg-white"
+                  />
+                </a>
+              )}
+
+              {fileState === "ready" && file?.kind === "pdf" && (
+                <iframe
+                  src={file.url}
+                  title={`Evidence #${id} document`}
+                  className="w-full h-[28rem] bg-white"
+                />
+              )}
+
+              {fileState === "ready" && file?.kind === "video" && (
+                <video src={file.url} controls className="w-full max-h-[28rem] bg-black" />
+              )}
+
+              {fileState === "ready" && file?.kind === "audio" && (
+                <div className="p-4">
+                  <audio src={file.url} controls className="w-full" />
+                </div>
+              )}
+
+              {fileState === "ready" && file?.kind === "text" && (
+                <pre className="p-4 text-xs text-slate-700 whitespace-pre-wrap break-words max-h-[28rem] overflow-auto bg-white">
+                  {file.text}
+                </pre>
+              )}
+
+              {fileState === "ready" && file?.kind === "none" && (
+                <div className="p-4 text-xs text-slate-500">
+                  This file format cannot be shown in the browser. Download it to open it.
+                </div>
+              )}
+
+            </div>
+
             <button
               onClick={handleDownloadFile}
               disabled={downloading}
               className="mt-2 w-full py-2 rounded bg-white hover:bg-ocean-100 border border-ocean-300 text-ocean-900 text-xs font-medium disabled:opacity-50 flex items-center justify-center gap-2"
             >
               <span>📥</span>
-              <span>{downloading ? "Retrieving from IPFS..." : "Download / View Evidence File"}</span>
+              <span>{downloading ? "Retrieving from IPFS..." : "Download Evidence File"}</span>
             </button>
 
 

@@ -4,6 +4,7 @@ import Evidence from "../models/Evidence.js";
 import Alert from "../models/Alert.js";
 import AccessLog from "../models/AccessLog.js";
 import { uploadToPinata, fetchFromIpfs, recomputeCid } from "../services/pinataService.js";
+import { sniffFileType } from "../utils/sniffFileType.js";
 
 import {
   getEvidenceFromChain,
@@ -299,9 +300,17 @@ export async function getEvidenceFile(req, res, next) {
 
     const buffer = await fetchFromIpfs(record.cid);
 
+    // record.fileType is the officer's label ("screenshot"), not a media
+    // type, so the format is read from the bytes. nosniff stops the browser
+    // second-guessing it, and the exhibit is never cached outside the session.
+    const { mime, ext } = sniffFileType(buffer);
+
+    res.setHeader("Content-Type", mime);
+    res.setHeader("X-Content-Type-Options", "nosniff");
+    res.setHeader("Cache-Control", "private, no-store");
     res.setHeader(
-      "Content-Type",
-      record.fileType || "application/octet-stream"
+      "Content-Disposition",
+      `inline; filename="evidence-${evidenceId}.${ext}"`
     );
 
     return res.send(buffer);
