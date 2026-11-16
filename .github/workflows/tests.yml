@@ -38,7 +38,7 @@ jobs:
       - run: npx hardhat test
 
   backend:
-    name: backend (136 tests)
+    name: backend (147 tests)
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -54,7 +54,7 @@ jobs:
       - run: npm test
 
   frontend:
-    name: frontend (38 tests)
+    name: frontend (41 tests)
     runs-on: ubuntu-latest
     defaults:
       run:
